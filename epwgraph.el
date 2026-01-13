@@ -41,15 +41,19 @@
 ;; Haven't really worked on the case where this is nil yet
 (defvar epwgraph-combine-channels t "*Non-nil means simplify the graph by combining multiple channels of the same device.")
 
-
-(defvar-keymap epwgraph-mode-map
+(defvar-keymap epwgraph-text-mode-map
   "g" #'epwgraph-refresh
   "d" #'epwgraph-disconnect-logical-nodes
+  "D" #'epwgraph-disconnect-ports
   "c" #'epwgraph-connect-logical-nodes
   "C" #'epwgraph-connect-ports
   "s" #'epwgraph-show
   "w" #'write-file
+  "t" #'epwgraph-toggle-channels
   "q" #'kill-current-buffer)
+
+(defvar-keymap epwgraph-mode-map
+  :parent epwgraph-text-mode-map)
 
 (define-derived-mode epwgraph-mode image-mode "PipeWire graph"
   "Major mode for visualizing PipeWire connections.")
@@ -99,6 +103,11 @@
     (insert dot-content)
     (call-process-region (point-min) (point-max) "graph-easy" t t nil "--ascii")
     (unless (derived-mode-p 'epwgraph-text-mode) (epwgraph-text-mode))))
+
+(defun epwgraph-toggle-channels ()
+  (interactive)
+  (setq epwgraph-combine-channels (not epwgraph-combine-channels))
+  (epwgraph-refresh))
 
 (defun epwgraph--get-id (string)
   (if (string-match "^[ \t]*\\([0-9]+\\)\\([ \t]+.*\\)?$" string)
@@ -384,10 +393,16 @@ If we can't match everything exactly, just do it in order."
   (epwgraph-refresh))
 
 (defun epwgraph-disconnect-logical-nodes (logical-links)
-  (interactive (list (epwgraph-complete-existing-logical-link)))
+  (interactive (list (epwgraph-complete-existing-logical-link "Disconnect link: ")))
   (with-current-buffer (get-buffer-create "*PipeWire*")
     (dolist (link logical-links)
       (call-process "pw-link" nil t t "-d" (number-to-string (car link)))))
+  (epwgraph-refresh))
+
+(defun epwgraph-disconnect-ports (link)
+  (interactive (list (epwgraph-complete-existing-link "Disconnect link: ")))
+  (with-current-buffer (get-buffer-create "*PipeWire*")
+    (call-process "pw-link" nil t t "-d" (number-to-string (car link))))
   (epwgraph-refresh))
 
 (provide 'epwgraph)
