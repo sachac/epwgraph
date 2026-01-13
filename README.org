@@ -1,0 +1,32 @@
+~epwgraph-show~ shows the graph of Pipewire audio connections inside Emacs. Logical connections between some nodes (ex: playback and monitor) are also shown.
+
+#+CAPTION: Screenshot of Pipewire graph
+[[file:images/2026-01-13_10-00-32.png]]
+
+It can produce ASCII art if you have easy-graph installed.
+
+#+CAPTION: Screenshot of ASCII output
+[[file:images/2026-01-13_10-01-27.png]]
+
+Call it with ~C-u M-x epwgraph-show~ if you want to specify a regular expression of nodes to focus on or nodes to ignore.
+Only the inputs and outputs connected to a focus node will be shown (including upstream and downstream).
+Excluded nodes will be ignored.
+
+Keybindings:
+
+| ~g~ | refresh                  |
+| ~d~ | disconnect               |
+| ~c~ | connect                  |
+| ~C~ | connect specific channel |
+
+Set ~epwgraph-combine-channels~ to nil if you prefer to see separate channels.
+
+#+CAPTION: Screenshot of Pipewire connections
+[[file:images/2026-01-13_09-57-10.png]]
+
+#+CAPTION: Screenshot of ASCII graph
+[[file:images/2026-01-13_09-56-08.png]]
+
+If you need more interactivity, check out [[https://github.com/rncbc/qpwgraph][qpwgraph]].
+
+Contact: [[mailto:sacha@sachachua.com][sacha@sachachua.com]]
