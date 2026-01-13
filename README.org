@@ -12,12 +12,12 @@ Excluded nodes will be ignored.
 
 Keybindings:
 
-| ~g~ | refresh                  |
-| ~d~ | disconnect               |
-| ~c~ | connect                  |
-| ~C~ | connect specific channel |
-
-Set ~epwgraph-combine-channels~ to nil if you prefer to see separate channels.
+| ~g~ | refresh                                                           |
+| ~d~ | disconnect logical nodes                                          |
+| ~D~ | disconnect specific ports                                         |
+| ~c~ | connect logical nodes                                             |
+| ~C~ | connect specific ports                                            |
+| ~t~ | toggle between showing specific ports and combining logical nodes |
 
 #+CAPTION: Screenshot of Pipewire connections
 [[file:images/2026-01-13_09-57-10.png]]
