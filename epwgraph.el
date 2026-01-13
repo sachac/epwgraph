@@ -366,12 +366,14 @@ If we can't match everything exactly, just do it in order."
                       sources)))
     (if (= (length by-channel) (length sources))
         by-channel
-      (seq-map-indexed
-       (lambda (o i)
-         (list nil
-               (car o)
-               (car (elt dests i))))
-       sources))))
+      (seq-filter
+       (lambda (o) (elt o 2))
+       (seq-map-indexed
+        (lambda (o i)
+          (list nil
+                (car o)
+                (car (elt dests i))))
+        sources)))))
 
 (defun epwgraph-connect-logical-nodes (logical-links)
   "Connect using normalized names."
