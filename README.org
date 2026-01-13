@@ -1,9 +1,7 @@
-~epwgraph-show~ shows the graph of Pipewire audio connections inside Emacs. Logical connections between some nodes (ex: playback and monitor) are also shown.
+~epwgraph-show~ shows the graph of Pipewire audio connections inside Emacs. Logical connections between some nodes (ex: playback and monitor) are also shown. You'll need graphviz to visualize the connections as SVG and/or easy-graph (libgraph-easy-perl) to visualize the connections as ASCII.
 
 #+CAPTION: Screenshot of Pipewire graph
 [[file:images/2026-01-13_10-00-32.png]]
-
-It can produce ASCII art if you have easy-graph installed.
 
 #+CAPTION: Screenshot of ASCII output
 [[file:images/2026-01-13_10-01-27.png]]
