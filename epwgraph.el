@@ -40,6 +40,10 @@
 (defvar epwgraph-exclude-regexp nil)
 ;; Haven't really worked on the case where this is nil yet
 (defvar epwgraph-combine-channels t "*Non-nil means simplify the graph by combining multiple channels of the same device.")
+(defvar epwgraph-display-registry '(epwgraph-show-logical-names epwgraph-show-ports))
+(defvar epwgraph-display-function 'epwgraph-show-logical-names)
+
+
 
 (defvar-keymap epwgraph-text-mode-map
   "g" #'epwgraph-refresh
@@ -49,7 +53,7 @@
   "C" #'epwgraph-connect-ports
   "s" #'epwgraph-show
   "w" #'write-file
-  "t" #'epwgraph-toggle-channels
+  "t" #'epwgraph-cycle-display-function
   "q" #'kill-current-buffer)
 
 (defvar-keymap epwgraph-mode-map
@@ -104,9 +108,21 @@
     (call-process-region (point-min) (point-max) "graph-easy" t t nil "--ascii")
     (unless (derived-mode-p 'epwgraph-text-mode) (epwgraph-text-mode))))
 
-(defun epwgraph-toggle-channels ()
+(defun epwgraph-show-logical-names (o)
+  (epwgraph--get-logical-name (cdr o)))
+
+(defun epwgraph-show-logical-ports (o)
+  (cdr o))
+
+(defun epwgraph-cycle-display-function ()
+  "Move to the next `epwgraph-display-function' in `epwgraph-display-registry'"
   (interactive)
-  (setq epwgraph-combine-channels (not epwgraph-combine-channels))
+  (let ((pos (seq-position epwgraph-display-function epwgraph-display-registry)))
+    (setq epwgraph-display-function
+          (elt epwgraph-display-registry
+               (if pos
+                   (elt (mod (1+ pos) (length epwgraph-display-registry)))
+                 0))))
   (epwgraph-refresh))
 
 (defun epwgraph--get-id (string)
