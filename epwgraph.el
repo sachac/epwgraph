@@ -65,6 +65,8 @@
 (define-derived-mode epwgraph-text-mode special-mode "PipeWire graph"
   "Major mode for visualizing PipeWire connections.")
 
+(defvar epwgraph-buffer-name "*epwgraph*")
+
 (defun epwgraph-show (&optional focus-regexp exclude-regexp)
   "Render the graph."
   (interactive
@@ -74,18 +76,17 @@
      (list
       epwgraph-focus-regexp
       epwgraph-exclude-regexp)))
-  (let* ((buf-name "*epwgraph*"))
+  (with-current-buffer (get-buffer-create epwgraph-buffer-name)
     (setq epwgraph-focus-regexp focus-regexp)
     (setq epwgraph-exclude-regexp exclude-regexp)
-    (with-current-buffer (get-buffer-create buf-name)
-      (let ((inhibit-read-only t)
-            (inhibit-redisplay t))
-        (with-silent-modifications
-          (erase-buffer)
-          (if (display-graphic-p)
-              (epwgraph-show-svg focus-regexp exclude-regexp)
-            (epwgraph-show-text focus-regexp exclude-regexp))))
-      (switch-to-buffer (current-buffer)))))
+    (let ((inhibit-read-only t)
+          (inhibit-redisplay t))
+      (with-silent-modifications
+        (erase-buffer)
+        (if (display-graphic-p)
+            (epwgraph-show-svg focus-regexp exclude-regexp)
+          (epwgraph-show-text focus-regexp exclude-regexp))))
+    (switch-to-buffer (current-buffer))))
 
 (defun epwgraph-show-svg (&optional focus-regexp exclude-regexp)
   (let* ((dot-content (epwgraph--filter-graph focus-regexp exclude-regexp))
@@ -111,17 +112,17 @@
 (defun epwgraph-show-logical-names (o)
   (epwgraph--get-logical-name (cdr o)))
 
-(defun epwgraph-show-logical-ports (o)
+(defun epwgraph-show-ports (o)
   (cdr o))
 
 (defun epwgraph-cycle-display-function ()
   "Move to the next `epwgraph-display-function' in `epwgraph-display-registry'"
   (interactive)
-  (let ((pos (seq-position epwgraph-display-function epwgraph-display-registry)))
+  (let ((pos (seq-position epwgraph-display-registry epwgraph-display-function)))
     (setq epwgraph-display-function
           (elt epwgraph-display-registry
                (if pos
-                   (elt (mod (1+ pos) (length epwgraph-display-registry)))
+                   (mod (1+ pos) (length epwgraph-display-registry))
                  0))))
   (epwgraph-refresh))
 
@@ -138,7 +139,8 @@
 (defun epwgraph--get-logical-name (full-name)
   "Convert 'Device:port_FL' to 'Device:port'.
 Removes common suffixes like _FL, _FR, _L, _R, .left, .right."
-  (if (and epwgraph-combine-channels (string-match "\\(.*?\\)_[A-Z]+$" full-name))
+  (when (listp full-name) (setq full-name (cdr full-name)))
+  (if (string-match "\\(.*?\\)_[A-Z]+$" full-name)
       (match-string 1 full-name)
     full-name))
 
@@ -188,47 +190,38 @@ Entries are of the form (id src-id dest-id)."
 
 (defun epwgraph--simplify-channels (nodes)
   (mapcar
-   (if epwgraph-combine-channels
-       (lambda (o)
-         (cons (car o)
-               (epwgraph--get-logical-name (cdr o))))
-     #'identity)
+   (lambda (o)
+     (setcdr o
+             (funcall epwgraph-display-function o))
+     o)
    (epwgraph--get-all-nodes)))
 
 (defun epwgraph--automatic-connections (nodes)
   "Return a list of (id . id) edges between playbacks and monitors, loopback inputs and outputs."
-  (let ((edges '())
-        (nodes-list (if (hash-table-p nodes)
-                        (hash-table-keys nodes)
-                      nodes)))
-    (dolist (src nodes-list)
+  (let (edges)
+    (dolist (src nodes)
       (let ((src-name (cdr src)))
         (cond
          ((string-match "\\(.*\\):playback" src-name)
-          (let ((base (match-string 1 src-name)))
-            (dolist (dst nodes-list)
-              (when (string-match (concat
-                                   (regexp-quote base) ":monitor"
-                                   (if (or epwgraph-combine-channels (null (epwgraph--get-channel (cdr src))))
-                                       ""
-                                     (concat
-                                      "_"
-                                      (regexp-quote (epwgraph--get-channel (cdr src))))))
-                                  (cdr dst))
-                (push (list nil (car src) (car dst)) edges)))))
+          (dolist (dst nodes)
+            (when (and
+                   (not (string= src-name (cdr dst)))
+                   (string=
+                    (replace-regexp-in-string ":monitor" ":playback"
+                                              (cdr dst))
+                    src-name))
+              (push (list nil (car src) (car dst)) edges))))
          ((string-match "\\(.*\\):input" src-name)
-          (let ((base (match-string 1 src-name)))
-            (dolist (dst nodes-list)
-              (when (string-match (concat
-                                   (regexp-quote base)
-                                   ":\\(output\\|monitor\\)"
-                                   (if (or epwgraph-combine-channels (null (epwgraph--get-channel (cdr src))))
-                                       ""
-                                     (concat
-                                      "_"
-                                      (regexp-quote (epwgraph--get-channel (cdr src))))))
-                                  (cdr dst))
-                (push (list nil (car src) (car dst)) edges))))))))
+          (dolist (dst nodes)
+            (when (and
+                   (not (string= src-name (cdr dst)))
+                   (string=
+                    (replace-regexp-in-string
+                     ":\\(output\\|monitor\\)"
+                     ":input"
+                     (cdr dst))
+                    src-name))
+              (push (list nil (car src) (car dst)) edges)))))))
     (delete-dups edges)))
 
 (defun epwgraph--filter-graph (&optional focus-regexp exclude-regexp)
@@ -292,7 +285,9 @@ Return a list of nodes."
 
 (defun epwgraph-refresh ()
   (interactive)
-  (epwgraph-show epwgraph-focus-regexp epwgraph-exclude-regexp))
+  ;; It might not be the displayed window
+  (save-window-excursion
+    (epwgraph-show epwgraph-focus-regexp epwgraph-exclude-regexp)))
 
 (defun epwgraph-complete-port (&optional prompt)
   "Use PROMPT to ask for a port name.
@@ -422,5 +417,25 @@ If we can't match everything exactly, just do it in order."
   (with-current-buffer (get-buffer-create "*PipeWire*")
     (call-process "pw-link" nil t t "-d" (number-to-string (car link))))
   (epwgraph-refresh))
+
+(defun epwgraph-get-ports-with-logical-name (s)
+  (seq-filter
+   (lambda (o)
+     (string= (epwgraph--get-logical-name o) s))
+   (epwgraph--get-all-nodes)))
+
+(defun epwgraph-get-incoming-links (ports)
+  (seq-filter (lambda (o) (member (elt o 2) ports)) (epwgraph--get-all-links)))
+
+(defun epwgraph-disconnect-all-inputs-for-logical-node (node)
+  (interactive (list (epwgraph-complete-logical-node-name "Source: ")))
+  (when (stringp node)
+    (setq node (epwgraph-get-ports-with-logical-name node)))
+  (let ((dest-ports (mapcar 'car node)))
+    (dolist (link (epwgraph-get-incoming-links dest-ports))
+      (call-process "pw-link" nil t t "-d" (number-to-string (car link)))))
+  (when (called-interactively-p 'any)
+    (message "Disconnected.")
+    (epwgraph-refresh)))
 
 (provide 'epwgraph)
