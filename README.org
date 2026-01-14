@@ -17,6 +17,7 @@ Keybindings:
 | ~D~ | disconnect specific ports                                         |
 | ~c~ | connect logical nodes                                             |
 | ~C~ | connect specific ports                                            |
+| ~i~ | rewire the input for a specific node
 | ~t~ | toggle between showing specific ports and combining logical nodes |
 
 #+CAPTION: Screenshot of Pipewire connections
@@ -28,3 +29,5 @@ Keybindings:
 If you need more interactivity, check out [[https://github.com/rncbc/qpwgraph][qpwgraph]].
 
 Contact: [[mailto:sacha@sachachua.com][sacha@sachachua.com]]
+
+Disclaimer: I don't know much about Pipewire myself, so there might be all sorts of weird quirks. =)
