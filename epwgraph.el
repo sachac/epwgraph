@@ -52,6 +52,7 @@
   "c" #'epwgraph-connect-logical-nodes
   "C" #'epwgraph-connect-ports
   "s" #'epwgraph-show
+  "i" #'epwgraph-rewire-inputs-for-logical-node
   "w" #'write-file
   "t" #'epwgraph-cycle-display-function
   "q" #'kill-current-buffer)
@@ -386,14 +387,21 @@ If we can't match everything exactly, just do it in order."
                 (car (elt dests i))))
         sources)))))
 
-(defun epwgraph-connect-logical-nodes (logical-links)
+(defun epwgraph-connect-logical-nodes (source dest)
   "Connect using normalized names."
-  (interactive (list (epwgraph-complete-new-logical-link)))
+  (interactive (list (epwgraph-complete-logical-node-name "Source: ")
+                     (epwgraph-complete-logical-node-name "Destination: ")))
   (with-current-buffer (get-buffer-create "*PipeWire*")
-    (dolist (link logical-links)
-      (call-process "pw-link" nil t t
-                    (number-to-string (elt link 1))
-                    (number-to-string (elt link 2)))))
+    (let ((links (epwgraph--get-all-links)))
+      (dolist (link (seq-difference
+                     (epwgraph--map-channels source dest)
+                     links
+                     (lambda (a b)
+                       (and (= (elt a 1) (elt b 1))
+                            (= (elt a 2) (elt b 2))))))
+        (call-process "pw-link" nil t t
+                      (number-to-string (elt link 1))
+                      (number-to-string (elt link 2))))))
   (epwgraph-refresh))
 
 (defun epwgraph-connect-ports (source dest)
@@ -436,6 +444,17 @@ If we can't match everything exactly, just do it in order."
       (call-process "pw-link" nil t t "-d" (number-to-string (car link)))))
   (when (called-interactively-p 'any)
     (message "Disconnected.")
+    (epwgraph-refresh)))
+
+(defun epwgraph-rewire-inputs-for-logical-node (new-input node)
+  "Make NEW-INPUT the only input for NODE."
+  (interactive (list
+                (epwgraph-complete-logical-node-name "Source: ")
+                (epwgraph-complete-logical-node-name "Destination: ")))
+  (epwgraph-disconnect-all-inputs-for-logical-node node)
+  (epwgraph-connect-logical-nodes new-input node)
+  (when (called-interactively-p 'any)
+    (message "Rewired.")
     (epwgraph-refresh)))
 
 (provide 'epwgraph)
